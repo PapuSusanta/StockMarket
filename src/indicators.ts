@@ -45,13 +45,13 @@ export function rsi(values: number[], period = 14) {
     averageGain = (averageGain * (period - 1) + Math.max(change, 0)) / period;
     averageLoss = (averageLoss * (period - 1) + Math.max(-change, 0)) / period;
   }
-  if (averageLoss === 0) return 100;
+  if (averageLoss === 0) return averageGain === 0 ? 50 : 100;
   return 100 - 100 / (1 + averageGain / averageLoss);
 }
 
 export function atr(candles: Candle[], period = 14) {
-  if (candles.length <= period) return NaN;
-  const trueRanges: number[] = [];
+  if (candles.length < period) return NaN;
+  const trueRanges: number[] = [candles[0].high - candles[0].low];
   for (let i = 1; i < candles.length; i++) {
     const current = candles[i];
     const previous = candles[i - 1];
@@ -116,7 +116,8 @@ export function calculate(candles: Candle[]) {
   const price = closes.at(-1)!;
   const atr14 = atr(candles, 14);
   const macdValue = macd(closes);
-  const avgVolume20 = sma(volumes, 20);
+  const avgVolume20 = sma(volumes.slice(0, -1), 20);
+  const currentVolume = volumes.at(-1) ?? NaN;
 
   return {
     sma20: sma(closes, 20),
@@ -131,7 +132,7 @@ export function calculate(candles: Candle[]) {
     macd: macdValue.line,
     macdSignal: macdValue.signal,
     avgVolume20,
-    volumeRatio: volumes.at(-1)! / avgVolume20,
+    volumeRatio: avgVolume20 > 0 ? currentVolume / avgVolume20 : NaN,
   };
 }
 
@@ -141,7 +142,8 @@ export function calculateDaily(candles: Candle[]): TechnicalSet {
   const price = closes.at(-1)!;
   const atr14 = atr(candles, 14);
   const macdValue = macd(closes);
-  const avgVolume20 = sma(volumes, 20);
+  const avgVolume20 = sma(volumes.slice(0, -1), 20);
+  const currentVolume = volumes.at(-1) ?? NaN;
 
   return {
     sma10: sma(closes, 10),
@@ -160,9 +162,10 @@ export function calculateDaily(candles: Candle[]): TechnicalSet {
     // The tested TCS source data matches Groww's displayed MACD most closely
     // when this field is the MACD histogram. Keep the signal separately.
     macd: macdValue.histogram,
+    macdLine: macdValue.line,
     macdSignal: macdValue.signal,
     avgVolume20,
-    volumeRatio: volumes.at(-1)! / avgVolume20,
+    volumeRatio: avgVolume20 > 0 ? currentVolume / avgVolume20 : NaN,
     pivots: classicPivots(candles),
   };
 }

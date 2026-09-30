@@ -23,7 +23,6 @@ The original calculator is preserved. The new daily technical layer is additive.
 - ATR 14
 - Classic Pivot, R1/R2/R3, S1/S2/S3
 - Daily volume comparison
-- Yahoo quote fundamentals when available
 
 No stock-specific hard-coded values and no AI are used.
 

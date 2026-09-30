@@ -17,20 +17,6 @@ export type PivotLevels = {
   s3: number;
 };
 
-export type YahooFundamentals = {
-  marketCap: number;
-  trailingPE: number;
-  priceToBook: number;
-  trailingEPS: number;
-  dividendYield: number;
-  bookValue: number;
-  debtToEquity: number;
-  returnOnEquity: number;
-  beta: number;
-  industryPE: number;
-  faceValue: number;
-};
-
 export type YahooData = {
   name: string;
   price: number;
@@ -44,7 +30,6 @@ export type YahooData = {
   liveVolume: number;
   candles: Candle[];
   dailyCandles: Candle[];
-  fundamentals: YahooFundamentals;
 };
 
 export type TechnicalSet = {
@@ -63,6 +48,7 @@ export type TechnicalSet = {
   atrPercent: number;
   /** Daily MACD histogram (MACD line - signal), matching the displayed technical value. */
   macd: number;
+  macdLine: number;
   macdSignal: number;
   avgVolume20: number;
   volumeRatio: number;
@@ -105,5 +91,4 @@ export type Analysis = {
 
   // Daily technicals added from the later screenshots.
   daily: TechnicalSet;
-  fundamentals: YahooFundamentals;
 };

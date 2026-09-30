@@ -1,7 +1,7 @@
 import './style.css';
 import { calculate, calculateDaily } from './indicators';
-import { loadYahoo } from './yahoo';
-import type { Analysis, YahooFundamentals } from './types';
+import { loadYahoo, normalizeYahooSymbol } from './yahoo';
+import type { Analysis } from './types';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -14,7 +14,7 @@ app.innerHTML = /*html*/ `
         <p>Yahoo Finance → deterministic technical calculation</p>
       </div>
       <form id="form">
-        <input id="symbol" value="TCS.NS" placeholder="e.g. TCS.NS" autocomplete="off">
+        <input id="symbol" value="TCS.NS" placeholder="e.g. TCS.NS or TCS.BO" autocomplete="off">
         <button type="submit">Calculate</button>
       </form>
     </header>
@@ -36,51 +36,32 @@ const money = (n: number) =>
     : '—';
 
 const num = (n: number, digits = 2) => Number.isFinite(n) ? n.toFixed(digits) : '—';
+const volume = (n: number) => Number.isFinite(n)
+  ? n.toLocaleString('en-IN', { maximumFractionDigits: 0 })
+  : '—';
+
+const ratio = (numerator: number, denominator: number) =>
+  Number.isFinite(numerator) && Number.isFinite(denominator) && denominator > 0
+    ? numerator / denominator
+    : NaN;
 
 const signed = (n: number, digits = 2) =>
   Number.isFinite(n) ? `${n >= 0 ? '+' : ''}${n.toFixed(digits)}` : '—';
-
-const compactCr = (n: number) =>
-  Number.isFinite(n) ? `₹${(n / 1e7).toLocaleString('en-IN', { maximumFractionDigits: 0 })}Cr` : '—';
 
 function row(label: string, value: string) {
   return `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`;
 }
 
 function rsiVerdict(value: number) {
+  if (!Number.isFinite(value)) return '—';
   if (value < 30) return 'Oversold';
   if (value > 70) return 'Overbought';
   return 'Neutral';
 }
 
 function macdVerdict(value: number) {
-  return value >= 0 ? 'Bullish' : 'Bearish';
-}
-
-function betaVerdict(value: number) {
   if (!Number.isFinite(value)) return '—';
-  if (value > 1.2) return 'Highly volatile';
-  if (value < 0.8) return 'Less volatile';
-  return 'Volatile like market';
-}
-
-function renderFundamentals(f: YahooFundamentals) {
-  return `
-    <article>
-      <h3>Fundamentals</h3>
-      ${row('Market cap', compactCr(f.marketCap))}
-      ${row('P/E (TTM)', num(f.trailingPE))}
-      ${row('P/B', num(f.priceToBook))}
-      ${row('ROE', Number.isFinite(f.returnOnEquity) ? `${num(f.returnOnEquity)}%` : '—')}
-      ${row('EPS (TTM)', money(f.trailingEPS))}
-      ${row('Dividend yield', Number.isFinite(f.dividendYield) ? `${num(f.dividendYield)}%` : '—')}
-      ${row('Book value', money(f.bookValue))}
-      ${row('Debt / Equity', num(f.debtToEquity))}
-      ${row('Beta', `${signed(f.beta)} — ${betaVerdict(f.beta)}`)}
-      ${row('Industry P/E', num(f.industryPE))}
-      ${row('Face value', money(f.faceValue))}
-    </article>
-  `;
+  return value >= 0 ? 'Above signal' : 'Below signal';
 }
 
 function render(a: Analysis) {
@@ -107,10 +88,10 @@ function render(a: Analysis) {
 
     <section class="grid">
       <article>
-        <h3>Price levels</h3>
+        <h3>20-hour range levels</h3>
         ${row('Support', money(a.support))}
         ${row('Resistance', money(a.resistance))}
-        ${row('Target', money(a.target))}
+        ${row('Heuristic target', money(a.target))}
         ${row('Stop loss', money(a.stopLoss))}
         ${row('Risk / Reward', `1:${num(a.riskReward)}`)}
         ${row('Upside to target', `${num(a.upsidePercent)}%`)}
@@ -118,27 +99,27 @@ function render(a: Analysis) {
 
       <article>
         <h3>Trend</h3>
-        ${row('SMA 20', money(a.legacySma20))}
-        ${row('SMA 50', money(a.legacySma50))}
-        ${row('SMA 200', money(a.legacySma200))}
-        ${row('EMA 20', money(a.legacyEma20))}
-        ${row('EMA 50', money(a.legacyEma50))}
-        ${row('EMA 200', money(a.legacyEma200))}
+        ${row('SMA 20H', money(a.legacySma20))}
+        ${row('SMA 50H', money(a.legacySma50))}
+        ${row('SMA 200H', money(a.legacySma200))}
+        ${row('EMA 20H', money(a.legacyEma20))}
+        ${row('EMA 50H', money(a.legacyEma50))}
+        ${row('EMA 200H', money(a.legacyEma200))}
       </article>
 
       <article>
         <h3>Momentum</h3>
-        ${row('RSI 14', num(a.legacyRsi14))}
-        ${row('MACD', num(a.legacyMacd))}
-        ${row('MACD Signal', num(a.legacyMacdSignal))}
-        ${row('ATR 14', money(a.legacyAtr14))}
-        ${row('ATR %', `${num(a.legacyAtrPercent)}%`)}
+        ${row('RSI 14H', num(a.legacyRsi14))}
+        ${row('MACD line (12,26,9) H', num(a.legacyMacd))}
+        ${row('MACD signal H', num(a.legacyMacdSignal))}
+        ${row('ATR 14H', money(a.legacyAtr14))}
+        ${row('ATR % H', `${num(a.legacyAtrPercent)}%`)}
       </article>
 
       <article>
         <h3>Volume & range</h3>
-        ${row('Volume', a.liveVolume.toLocaleString('en-IN'))}
-        ${row('Avg volume 20H', a.legacyAvgVolume20.toLocaleString('en-IN', { maximumFractionDigits: 0 }))}
+        ${row('Volume', volume(a.liveVolume))}
+        ${row('Avg volume 20H', volume(a.legacyAvgVolume20))}
         ${row('Volume ratio', `${num(a.legacyVolumeRatio)}x`)}
         ${row('Day high', money(a.dayHigh))}
         ${row('Day low', money(a.dayLow))}
@@ -155,7 +136,7 @@ function render(a: Analysis) {
 
     <section class="section-title">
       <h2>Daily technicals</h2>
-      <p>Separate daily calculation added from the later technical screenshots. It does not replace the original calculation.</p>
+      <p>Daily indicators use Yahoo Finance daily candles. The hourly metrics above are calculated separately.</p>
     </section>
 
     <section class="grid">
@@ -165,7 +146,7 @@ function render(a: Analysis) {
         ${row('Previous close', money(a.previousClose))}
         ${row('Today high', money(a.dayHigh))}
         ${row('Today low', money(a.dayLow))}
-        ${row('Live volume', a.liveVolume.toLocaleString('en-IN'))}
+        ${row('Live volume', volume(a.liveVolume))}
         ${row('Lower circuit', '—')}
         ${row('Upper circuit', '—')}
       </article>
@@ -183,10 +164,10 @@ function render(a: Analysis) {
 
       <article>
         <h3>Daily indicators</h3>
-        ${row('RSI (14)', `${signed(daily.rsi14)} — ${rsiVerdict(daily.rsi14)}`)}
-        ${row('MACD (12,26,9)', `${signed(daily.macd)} — ${macdVerdict(daily.macd)}`)}
+        ${row('RSI (14)', `${num(daily.rsi14)} — ${rsiVerdict(daily.rsi14)}`)}
+        ${row('MACD histogram (12,26,9)', `${signed(daily.macd)} — ${macdVerdict(daily.macd)}`)}
+        ${row('MACD line', signed(daily.macdLine))}
         ${row('MACD Signal', signed(daily.macdSignal))}
-        ${row('Beta', `${signed(a.fundamentals.beta)} — ${betaVerdict(a.fundamentals.beta)}`)}
         ${row('ATR (14)', money(daily.atr14))}
         ${row('ATR %', `${num(daily.atrPercent)}%`)}
       </article>
@@ -207,9 +188,9 @@ function render(a: Analysis) {
 
       <article>
         <h3>Daily volume</h3>
-        ${row('Live volume', a.liveVolume.toLocaleString('en-IN'))}
-        ${row('20D avg volume', daily.avgVolume20.toLocaleString('en-IN', { maximumFractionDigits: 0 }))}
-        ${row('Volume ratio', `${num(a.liveVolume / daily.avgVolume20)}x`)}
+        ${row('Live volume', volume(a.liveVolume))}
+        ${row('20D avg volume', volume(daily.avgVolume20))}
+        ${row("Today's volume / 20D avg", `${num(ratio(a.liveVolume, daily.avgVolume20))}x`)}
         ${row('Delivery %', '—')}
       </article>
 
@@ -221,7 +202,6 @@ function render(a: Analysis) {
         ${row('Price → 52W low', `${num((a.price / a.week52Low - 1) * 100)}%`)}
       </article>
 
-      ${renderFundamentals(a.fundamentals)}
     </section>
   `;
 }
@@ -234,7 +214,13 @@ $('#form').addEventListener('submit', async (event) => {
   const symbol = input.value.trim().toUpperCase();
   if (!symbol) return;
 
-  const yahooSymbol = symbol.endsWith('.NS') ? symbol : `${symbol}.NS`;
+  let yahooSymbol: string;
+  try {
+    yahooSymbol = normalizeYahooSymbol(symbol);
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : 'Enter a valid stock symbol';
+    return;
+  }
   status.textContent = `Calculating ${yahooSymbol}…`;
 
   try {
@@ -285,7 +271,6 @@ $('#form').addEventListener('submit', async (event) => {
       legacyVolumeRatio: legacy.volumeRatio,
 
       daily: calculateDaily(data.dailyCandles),
-      fundamentals: data.fundamentals,
     };
 
     render(analysis);
