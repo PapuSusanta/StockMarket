@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+
+.DS_Store
+.vscode/
+.agents/
+.idea/
+AGENTS.md
+
+*-lock.json
+*-lock.yaml
