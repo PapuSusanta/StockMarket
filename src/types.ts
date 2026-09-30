@@ -28,6 +28,8 @@ export type YahooData = {
   open: number;
   previousClose: number;
   liveVolume: number;
+  quoteTime: number;
+  quoteTimeSource: 'quote' | 'hourly candle';
   candles: Candle[];
   dailyCandles: Candle[];
 };
@@ -67,6 +69,8 @@ export type Analysis = {
   open: number;
   previousClose: number;
   liveVolume: number;
+  quoteTime: number;
+  quoteTimeSource: 'quote' | 'hourly candle';
 
   // Original calculator output — intentionally preserved.
   support: number;

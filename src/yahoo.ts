@@ -7,6 +7,7 @@ type YahooChart = {
         longName?: string;
         shortName?: string;
         regularMarketPrice?: number;
+        regularMarketTime?: number;
         regularMarketChangePercent?: number;
         regularMarketDayHigh?: number;
         regularMarketDayLow?: number;
@@ -53,7 +54,7 @@ function parseCandles(result: NonNullable<NonNullable<YahooChart['chart']>['resu
       high,
       low,
       close,
-      volume: finite(volume) ? volume : 0,
+      volume: finite(volume) ? volume : NaN,
     });
   }
 
@@ -100,15 +101,17 @@ export async function loadYahoo(symbol: string): Promise<YahooData> {
 
   return {
     name: meta.longName ?? meta.shortName ?? normalized,
-    price: meta.regularMarketPrice ?? lastHourly.close,
-    changePercent: meta.regularMarketChangePercent ?? 0,
-    dayHigh: meta.regularMarketDayHigh ?? lastHourly.high,
-    dayLow: meta.regularMarketDayLow ?? lastHourly.low,
-    week52High: meta.fiftyTwoWeekHigh ?? Math.max(...dailyCandles.slice(-252).map((x) => x.high)),
-    week52Low: meta.fiftyTwoWeekLow ?? Math.min(...dailyCandles.slice(-252).map((x) => x.low)),
-    open: meta.regularMarketOpen ?? lastHourly.open,
-    previousClose: meta.previousClose ?? dailyCandles.at(-2)?.close ?? lastDaily.close,
-    liveVolume: meta.regularMarketVolume ?? lastHourly.volume,
+    price: finite(meta.regularMarketPrice) ? meta.regularMarketPrice : lastHourly.close,
+    changePercent: finite(meta.regularMarketChangePercent) ? meta.regularMarketChangePercent : NaN,
+    dayHigh: finite(meta.regularMarketDayHigh) ? meta.regularMarketDayHigh : NaN,
+    dayLow: finite(meta.regularMarketDayLow) ? meta.regularMarketDayLow : NaN,
+    week52High: finite(meta.fiftyTwoWeekHigh) ? meta.fiftyTwoWeekHigh : Math.max(...dailyCandles.slice(-252).map((x) => x.high)),
+    week52Low: finite(meta.fiftyTwoWeekLow) ? meta.fiftyTwoWeekLow : Math.min(...dailyCandles.slice(-252).map((x) => x.low)),
+    open: finite(meta.regularMarketOpen) ? meta.regularMarketOpen : NaN,
+    previousClose: finite(meta.previousClose) ? meta.previousClose : NaN,
+    liveVolume: finite(meta.regularMarketVolume) ? meta.regularMarketVolume : NaN,
+    quoteTime: finite(meta.regularMarketTime) ? meta.regularMarketTime : lastHourly.time,
+    quoteTimeSource: finite(meta.regularMarketTime) ? 'quote' : 'hourly candle',
     candles: hourly.candles,
     dailyCandles,
   };

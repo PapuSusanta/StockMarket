@@ -48,6 +48,10 @@ const ratio = (numerator: number, denominator: number) =>
 const signed = (n: number, digits = 2) =>
   Number.isFinite(n) ? `${n >= 0 ? '+' : ''}${n.toFixed(digits)}` : '—';
 
+const timestamp = (seconds: number) => Number.isFinite(seconds)
+  ? new Date(seconds * 1000).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' })
+  : 'time unavailable';
+
 function row(label: string, value: string) {
   return `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`;
 }
@@ -75,10 +79,11 @@ function render(a: Analysis) {
       </div>
       <div class="price">
         <strong>${money(a.price)}</strong>
-        <span class="${a.changePercent >= 0 ? 'up' : 'down'}">
-          ${a.changePercent >= 0 ? '+' : ''}${num(a.changePercent)}%
+        <span class="${Number.isFinite(a.changePercent) ? (a.changePercent >= 0 ? 'up' : 'down') : ''}">
+          ${Number.isFinite(a.changePercent) ? `${a.changePercent >= 0 ? '+' : ''}${num(a.changePercent)}%` : '—'}
         </span>
       </div>
+      <p class="data-note">Yahoo Finance · ${a.quoteTimeSource === 'quote' ? 'quote timestamp' : 'latest hourly candle timestamp'}: ${timestamp(a.quoteTime)} (IST). Exchange feeds may be delayed.</p>
     </section>
 
     <section class="section-title">
@@ -88,7 +93,8 @@ function render(a: Analysis) {
 
     <section class="grid">
       <article>
-        <h3>20-hour range levels</h3>
+        <h3>20-hour range heuristic</h3>
+        <p>Exploratory levels from the last 20 hourly candles; not forecast or trade signals.</p>
         ${row('Support', money(a.support))}
         ${row('Resistance', money(a.resistance))}
         ${row('Heuristic target', money(a.target))}
@@ -248,12 +254,14 @@ $('#form').addEventListener('submit', async (event) => {
       open: data.open,
       previousClose: data.previousClose,
       liveVolume: data.liveVolume,
+      quoteTime: data.quoteTime,
+      quoteTimeSource: data.quoteTimeSource,
 
       support,
       resistance,
       target,
       stopLoss,
-      riskReward: risk > 0 ? reward / risk : NaN,
+      riskReward: risk > 0 && reward > 0 ? reward / risk : NaN,
       upsidePercent: ((target / data.price) - 1) * 100,
 
       legacySma20: legacy.sma20,

@@ -94,7 +94,16 @@ export function classicPivots(candles: Candle[]): PivotLevels {
   if (candles.length < 2) {
     return { pivot: NaN, r1: NaN, r2: NaN, r3: NaN, s1: NaN, s2: NaN, s3: NaN };
   }
-  const previous = candles[candles.length - 2];
+  const latest = candles.at(-1)!;
+  const latestDate = new Date(latest.time * 1000).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const now = new Date();
+  const today = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(now);
+  const previous = latestDate === today && time < '15:30'
+    ? candles[candles.length - 2]
+    : latest;
   const { high, low, close } = previous;
   const pivot = (high + low + close) / 3;
   const range = high - low;
@@ -116,7 +125,7 @@ export function calculate(candles: Candle[]) {
   const price = closes.at(-1)!;
   const atr14 = atr(candles, 14);
   const macdValue = macd(closes);
-  const avgVolume20 = sma(volumes.slice(0, -1), 20);
+  const avgVolume20 = sma(volumes.slice(0, -1).filter(Number.isFinite), 20);
   const currentVolume = volumes.at(-1) ?? NaN;
 
   return {
@@ -142,7 +151,7 @@ export function calculateDaily(candles: Candle[]): TechnicalSet {
   const price = closes.at(-1)!;
   const atr14 = atr(candles, 14);
   const macdValue = macd(closes);
-  const avgVolume20 = sma(volumes.slice(0, -1), 20);
+  const avgVolume20 = sma(volumes.slice(0, -1).filter(Number.isFinite), 20);
   const currentVolume = volumes.at(-1) ?? NaN;
 
   return {
