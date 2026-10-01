@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "StockAnalysis.Api/1.0.0": {
+        "runtime": {
+          "StockAnalysis.Api.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "StockAnalysis.Api/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

@@ -9,4 +9,7 @@ dist/
 AGENTS.md
 
 *-lock.json
-*-lock.yaml
+*-lock.yamlbackend/**/bin/
+backend/**/obj/
+!frontend/pnpm-lock.yaml
+frontend/tsconfig.tsbuildinfo

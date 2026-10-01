@@ -1,37 +1,30 @@
 # Indian Stock Calculator
 
-The original calculator is preserved. The new daily technical layer is additive.
+The application is split into a Vite frontend and an ASP.NET Core 10 Web API. The API fetches Yahoo Finance data and calculates all technical metrics; the browser renders the API response.
 
-## Original calculator (preserved)
-- Yahoo 1y / 60m candles
-- SMA 20/50/200
-- EMA 20/50/200
-- RSI 14
-- MACD 12/26/9
-- ATR 14
-- 20-candle average volume
-- last 20-candle support/resistance
-- target = resistance + 2 × (resistance - support)
-- stop loss = support
-- risk/reward and upside
+## Run locally
 
-The range levels are exploratory heuristics based on recent hourly bars. They are not forecasts or trade recommendations.
+Start the API in one terminal:
 
-## Added daily technical layer
-- Yahoo 2y / 1d candles
-- SMA/EMA 10/20/50/100/200
-- RSI 14
-- MACD 12/26/9
-- ATR 14
-- Classic Pivot, R1/R2/R3, S1/S2/S3
-- Daily volume comparison
+```sh
+cd backend/StockAnalysis.Api
+dotnet run
+```
 
-No stock-specific hard-coded values and no AI are used.
+Start the Vite frontend in another terminal:
 
-When Yahoo does not expose a requested field, the UI shows `—` rather than substituting a different measurement. The quote timestamp is shown in IST; Yahoo data can be delayed depending on the exchange.
+```sh
+cd frontend
+pnpm install
+pnpm dev
+```
 
-## Yahoo proxy configuration
+Vite proxies `/api` to `http://localhost:5000` by default. Set `API_PROXY_TARGET` in the frontend environment if the API listens on a different address. The API permits the Vite development origin `http://localhost:5173`.
 
-The browser requests the same-origin `/yahoo` path. The Vite development proxy forwards it to Yahoo Finance. Copy `.env.example` to `.env` and set `YAHOO_PROXY_TARGET` if you need a different upstream origin; restart Vite after changing it. Keep this as a server-side proxy because the Yahoo request should not be redirected to an upstream from browser code.
+## API
 
-`YAHOO_PROXY_TARGET` configures Vite's development server only. A static production build does not include a proxy. Configure your hosting platform or backend with a `/yahoo/*` rewrite/proxy to the Yahoo chart API before deploying; otherwise deployed requests will fail. Do not put private credentials in a `VITE_` variable.
+`GET /api/analysis/{symbol}` returns the original hourly metrics and daily technical indicators. Examples: `/api/analysis/TCS.NS`, `/api/analysis/TCS.BO`, or `/api/analysis/NSE:TCS`.
+
+Yahoo Finance fields that are unavailable are represented as `NaN` values by the API and shown as `—` by the frontend. Quote timestamps are displayed in IST. Yahoo data can be delayed depending on the exchange.
+
+The support, resistance, and target fields use the daily classic pivot S1, R1, and R2 levels also shown in the daily technicals. They are reference levels, not trade recommendations. No stock-specific values are hard-coded.

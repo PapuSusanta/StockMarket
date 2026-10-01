@@ -1,6 +1,4 @@
 import "./style.css";
-import { calculate, calculateDaily } from "./indicators";
-import { loadYahoo, normalizeYahooSymbol } from "./yahoo";
 import type { Analysis } from "./types";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -11,7 +9,7 @@ app.innerHTML = /*html*/ `
       <div>
         <div class="eyebrow">INDIAN STOCK CALCULATOR</div>
         <h1>Stock Analysis</h1>
-        <p>Yahoo Finance → deterministic technical calculation</p>
+        <p>Technical analysis calculated by the API</p>
       </div>
       <form id="form">
         <input id="symbol" value="" placeholder="e.g. TCS.NS or TCS.BO" autocomplete="off">
@@ -113,8 +111,8 @@ function render(a: Analysis) {
 
     <section class="grid">
       <article>
-        <h3>20-hour range heuristic</h3>
-        <p>Exploratory levels from the last 20 hourly candles; not forecast or trade signals.</p>
+        <h3>Daily pivot levels</h3>
+        <p>Support, resistance, and target use the daily pivot levels shown below; these are reference levels, not trade signals.</p>
         ${row("Support", money(a.support))}
         ${row("Resistance", money(a.resistance))}
         ${row("Heuristic target", money(a.target))}
@@ -234,81 +232,23 @@ function render(a: Analysis) {
 
 $("#form").addEventListener("submit", async (event) => {
   event.preventDefault();
-
   const input = $<HTMLInputElement>("#symbol");
   const status = $<HTMLElement>("#status");
   const symbol = input.value.trim().toUpperCase();
   if (!symbol) return;
 
-  let yahooSymbol: string;
+  status.textContent = `Loading ${symbol}…`;
   try {
-    yahooSymbol = normalizeYahooSymbol(symbol);
-  } catch (error) {
-    status.textContent =
-      error instanceof Error ? error.message : "Enter a valid stock symbol";
-    return;
-  }
-  status.textContent = `Calculating ${yahooSymbol}…`;
-
-  try {
-    const data = await loadYahoo(yahooSymbol);
-
-    // Preserve the old calculator's exact input: hourly candles.
-    const legacy = calculate(data.candles);
-    const recent = data.candles.slice(-20);
-    const support = Math.min(...recent.map((candle) => candle.low));
-    const resistance = Math.max(...recent.map((candle) => candle.high));
-    const target = resistance + (resistance - support) * 2;
-    const stopLoss = support;
-    const risk = data.price - stopLoss;
-    const reward = target - data.price;
-
-    const analysis: Analysis = {
-      symbol: yahooSymbol,
-      name: data.name,
-      price: data.price,
-      changePercent: data.changePercent,
-      dayHigh: data.dayHigh,
-      dayLow: data.dayLow,
-      week52High: data.week52High,
-      week52Low: data.week52Low,
-      open: data.open,
-      previousClose: data.previousClose,
-      liveVolume: data.liveVolume,
-      quoteTime: data.quoteTime,
-      quoteTimeSource: data.quoteTimeSource,
-
-      support,
-      resistance,
-      target,
-      stopLoss,
-      riskReward: risk > 0 && reward > 0 ? reward / risk : NaN,
-      upsidePercent: (target / data.price - 1) * 100,
-
-      legacySma20: legacy.sma20,
-      legacySma50: legacy.sma50,
-      legacySma200: legacy.sma200,
-      legacyEma20: legacy.ema20,
-      legacyEma50: legacy.ema50,
-      legacyEma200: legacy.ema200,
-      legacyRsi14: legacy.rsi14,
-      legacyMacd: legacy.macd,
-      legacyMacdSignal: legacy.macdSignal,
-      legacyAtr14: legacy.atr14,
-      legacyAtrPercent: legacy.atrPercent,
-      legacyAvgVolume20: legacy.avgVolume20,
-      legacyVolumeRatio: legacy.volumeRatio,
-
-      daily: calculateDaily(data.dailyCandles),
-    };
-
-    render(analysis);
-    status.textContent =
-      "Original + daily technical calculations completed from Yahoo Finance data.";
+    const response = await fetch(`/api/analysis/${encodeURIComponent(symbol)}`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { error?: string; message?: string; title?: string } | null;
+      throw new Error(body?.error || body?.message || body?.title || `API request failed (${response.status})`);
+    }
+    render(await response.json() as Analysis);
+    status.textContent = "Analysis loaded.";
   } catch (error) {
     console.error(error);
-    status.textContent =
-      error instanceof Error ? error.message : "Calculation failed";
+    status.textContent = error instanceof Error ? error.message : "Unable to load analysis";
     $("#result").innerHTML = "";
   }
 });
